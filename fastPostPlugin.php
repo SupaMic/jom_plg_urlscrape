@@ -1,7 +1,7 @@
 <?php
 /**
  * plugin fastPostPlugin
- * @version 0.5 - July 2013
+ * @version 0.6 - July 2013
  * @package fastPostPlugin
  * @copyright Copyright (c) SupaDupa Productions http://SupaDesign.ca
  * @license http://www.gnu.org/copyleft/gpl.html GNU/GPL
@@ -11,8 +11,8 @@
  * Info
  * =======================
  *
- * Use Plugin Trigger with URL inside brackets:
- *   {FP http://example.com}
+ * Use Plugin Trigger then use as many *known* URLs as you want:
+ *   =FP http://example.com/story45  http://example.org/story79
  */
 
 
@@ -41,29 +41,43 @@ class plgContentFastPostPlugin extends JPlugin {
         function onContentPrepare( $context, &$article, &$params, $limitstart=0)
                 {
                 global $mainframe;
-                if (JString::strpos($article->text, '{FP') === false)  {
+                if (JString::strpos($article->text, '=FP') === false)  {
 					return true;
                 }
 				
                 $patterns = array(); 
 				$patterns[0] = '((<a href=")(http://[a-zA-Z0-9./-]+)(">))';  //strip out a href to avoid duplicate
-				$patterns[1] = '([}])';
-				$patterns[2] = '([{FP ])';
+				$patterns[1] = '([=FP ])'; //remove trigger =FP
 
                 $replacements = array();
                 $replacements[0] = '';
                 $replacements[1] = '';
-                $replacements[2] = '';
-				$article->text = preg_replace($patterns, $replacements, $article->text); //remove opening and closing curly braces as well as FP
+				
+				$article->text = preg_replace($patterns, $replacements, $article->text); 
 					
-				$article->text = preg_replace_callback('(http://[a-zA-Z0-9./-]+)',function ($m){return $this->urlScrape($m[0]);}, $article->text);
+				if (version_compare(PHP_VERSION, '5.4.0') >= 0) {
+					echo 'I am at least PHP version 5.4.0, my version: ' . PHP_VERSION . "\n";
+					$article->text = preg_replace_callback('(http://[a-zA-Z0-9./-]+)',function ($m){return $this->urlScrape($m[0]);}, $article->text);
+					return true;
+				}elseif(version_compare(PHP_VERSION, '5.3.0')>= 0)
+				{
+					echo 'I am at least PHP version 5.3.0, my version: ' . PHP_VERSION . "\n";
+					$article->text = preg_replace('|(http://[a-zA-Z0-9./-]+)|e','$this->urlScrape("\1")', $article->text);
+					return true;
+				}elseif(version_compare(PHP_VERSION, '5.2.0')>= 0)
+				{
+					echo 'I am at least PHP version 5.2.0, my version: ' . PHP_VERSION . "\n";
+					$article->text = preg_replace('|(http://[a-zA-Z0-9./-]+)|e','$this->urlScrape("\1")', $article->text);
+					return true;
+				}
+				
                 return true;
         }
 
         function urlScrape( $url )
         {
 				$url = str_replace('//www.','//',$url);
-				
+				$useParse = false;
 				//$params = $this->params;
 				$domain = parse_url($url, PHP_URL_HOST);
 				//$path = parse_url($url, PHP_URL_PATH); 
@@ -108,11 +122,12 @@ class plgContentFastPostPlugin extends JPlugin {
 					//$ret['audio'] = $html->find('audio[id] span', 0)->innertext;
 					foreach($html->find('audio[id] span') as $element){
 						$ret['audio'][] = $element->innertext;}
+					$ret['audiolist']='';
 					foreach ($ret['audio'] as $value){
 						$ret['audiolist'].=$value.'<br>';}
 					
-					foreach($html->find('audio span') as $element){
-					echo $element;}
+					//foreach($html->find('audio span') as $element){
+					//echo $element;}
 					
 					//echo $ret['audio'];
 					//echo $ret['audio'][1];
@@ -128,6 +143,7 @@ class plgContentFastPostPlugin extends JPlugin {
 						$i++;
 						$ret['sizecheck'] = strlen($html->find('div[class="entry-content"] p',$i)->innertext);
 					}
+					$ret['body']='';
 					foreach ($ret['entry-content'] as $value) {
 						$ret['body'] .= '<p>'.$value.'</p>';
 					}

@@ -1,13 +1,13 @@
 <?xml version="1.2" encoding="utf-8"?>
 <extension version="2.5" type="plugin" group="content" client="site" method="upgrade">
-  <name>Fast Post</name>
+  <name>Content - Fast Post</name>
 	<author>SupaDesign</author>
-	<creationDate>06.07.2013</creationDate>
+	<creationDate>08.07.2013</creationDate>
 	<copyright>Copyright (c) 2013 by SupaDupa Productions</copyright>
 	<license>http://www.gnu.org/copyleft/gpl.html GNU/GPL</license>
 	<authorEmail>mic@supa.ca</authorEmail>
 	<authorUrl>www.SupaDesign.ca</authorUrl>
-	<version>0.5</version>
+	<version>0.6</version>
 	<description><![CDATA[{FP http://example.com/article99 } <br>Turn a URL(from a known site) into full article, including images and links. <br>
 	This Plugin requires latest <a href="http://www.raslab.org/en/filerepository/item/simple-html-dom-parser-library-for-joomla" target="_blank">PHP SimpleHTMLDOM Library v1.5 rev.208</a><br>
 	Remember to <a href="index.php?option=com_plugins">Enable Plugin</a>]]></description>
