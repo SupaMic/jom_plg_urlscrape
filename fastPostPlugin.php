@@ -24,7 +24,7 @@ jimport('simplehtmldom.simple_html_dom');
 class plgContentFastPostPlugin extends JPlugin {
 
 
-  function plgContentFastPostPlugin( &$subject, $params )
+	function plgContentFastPostPlugin( &$subject, $params )
         {
                 parent::__construct( $subject, $params );
         }
@@ -63,15 +63,17 @@ class plgContentFastPostPlugin extends JPlugin {
         function urlScrape( $url )
         {
 				$url = str_replace('//www.','//',$url);
-				//var_dump($url);
+				
 				//$params = $this->params;
 				$domain = parse_url($url, PHP_URL_HOST);
 				//$path = parse_url($url, PHP_URL_PATH); 
+				//var_dump($domain);
 				
 				switch ($domain)
 				{
 					case 'cbc.ca': $useParse = true;
 					$html = file_get_html($url);
+					foreach($html->find('img') as $element){$element->src='http://www.cbc.ca'.$element->src;}
 					$ret['title'] = $html->find('div[class="headline"] h1', 0)->innertext;
 					//$ret['title'] = $html->find('[id="storyhead"]h1', 0)->innertext;
 					//$ret['subtitle'] = $html->find('h3[class="deck"]', 0)->innertext;
@@ -94,7 +96,48 @@ class plgContentFastPostPlugin extends JPlugin {
 					//$article->title = $ret['title'];
 					$parsed= '<br><h1>'.$ret['title'].'</h1><br><h2>'.$ret['subtitle'].'</h2><br><h6>'.$ret['posted'].$ret['lastupdated'].'</h6><br>'.$ret['leadmedia'];
 					$parsed.=$ret['storybody'];
-					break;			
+					break;	
+					
+					case 'janinebandcroft.wordpress.com': 
+					$useParse = true;
+					$html = file_get_html($url);
+				
+					$ret['title'] = $html->find('h2[class="entry-title"]', 0)->innertext;
+					$ret['entry-meta'] = $html->find('div[class="entry-meta"]', 0)->innertext;
+					//$ret['audio'] = $html->find('span[style="text-align:left;display:block;"] p', 0)->innertext;
+					//$ret['audio'] = $html->find('audio[id] span', 0)->innertext;
+					foreach($html->find('audio[id] span') as $element){
+						$ret['audio'][] = $element->innertext;}
+					foreach ($ret['audio'] as $value){
+						$ret['audiolist'].=$value.'<br>';}
+					
+					foreach($html->find('audio span') as $element){
+					echo $element;}
+					
+					//echo $ret['audio'];
+					//echo $ret['audio'][1];
+					//echo $html->find('audio[id] span',-1) ;
+					//$ret['entry-content'] = $html->find('div[class="entry-content"]', 0)->innertext;
+					//$ret['entry-content'][] = $html->find('div[class="entry-content"] p',0)->innertext;
+					//$ret['entry-content'][] = $html->find('div[class="entry-content"] p',1)->innertext;
+					//$ret['entry-content'][] = $html->find('div[class="entry-content"] p',2)->innertext;
+					$i=0;
+					$ret['sizecheck'] = strlen($html->find('div[class="entry-content"] p',$i)->innertext);
+					while ($ret['sizecheck'] < 10000){
+						$ret['entry-content'][] = $html->find('div[class="entry-content"] p',$i)->innertext;
+						$i++;
+						$ret['sizecheck'] = strlen($html->find('div[class="entry-content"] p',$i)->innertext);
+					}
+					foreach ($ret['entry-content'] as $value) {
+						$ret['body'] .= '<p>'.$value.'</p>';
+					}
+					
+					//var_dump($ret);
+					$parsed= '<br><h1>'.$ret['title'].'</h1><br><h6>'.$ret['entry-meta'].'</h6><br>'.$ret['audiolist'];
+					$parsed.=$ret['body'];
+					break;
+					
+					
 				}
 				
 				
@@ -106,8 +149,6 @@ class plgContentFastPostPlugin extends JPlugin {
 				}
         }
 		
-
-
 }
 
 ?>
