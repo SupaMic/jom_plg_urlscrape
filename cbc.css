@@ -1,0 +1,23 @@
+span.photo.left, span.photo.right {
+    float: right;
+    margin: 5px 0 7px 15px;
+}
+span.photo {
+    border-bottom: 1px solid #C4C4C4;
+    color: #565656;
+    font-size: 0.8em;
+    line-height: 1.2em;
+    overflow: hidden;
+    padding: 0 0 10px;
+    text-align: left;
+}
+em.caption {
+	float: right;
+	font-style: normal;
+	margin: 0;
+	padding: 9px 0 10px;
+	font-size: 11px;
+	color: #565656;
+	border-bottom: 1px solid #c4c4c4;
+	width: 100%;
+}
