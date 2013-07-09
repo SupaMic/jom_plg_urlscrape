@@ -46,7 +46,7 @@ class plgContentFastPostPlugin extends JPlugin {
                 }
 				
                 $patterns = array(); 
-				$patterns[0] = '((<a href=")(http://[a-zA-Z0-9./-]+)(">))';  //strip out a href to avoid duplicate
+				$patterns[0] = '((<a href=")(http://[\?\&\#=a-zA-Z0-9./-]+)(">))';  //strip out a href to avoid duplicate
 				$patterns[1] = '([=FP ])'; //remove trigger =FP
 
                 $replacements = array();
@@ -57,17 +57,17 @@ class plgContentFastPostPlugin extends JPlugin {
 					
 				if (version_compare(PHP_VERSION, '5.4.0') >= 0) {
 					echo 'I am at least PHP version 5.4.0, my version: ' . PHP_VERSION . "\n";
-					$article->text = preg_replace_callback('(http://[a-zA-Z0-9./-]+)',function ($m){return $this->urlScrape($m[0]);}, $article->text);
+					$article->text = preg_replace_callback('(http://[\?\&\#=a-zA-Z0-9./-]+)',function ($m){return $this->urlScrape($m[0]);}, $article->text);
 					return true;
 				}elseif(version_compare(PHP_VERSION, '5.3.0')>= 0)
 				{
 					echo 'I am at least PHP version 5.3.0, my version: ' . PHP_VERSION . "\n";
-					$article->text = preg_replace('|(http://[a-zA-Z0-9./-]+)|e','$this->urlScrape("\1")', $article->text);
+					$article->text = preg_replace('|(http://[\?\&\#=a-zA-Z0-9./-]+)|e','$this->urlScrape("\1")', $article->text);
 					return true;
 				}elseif(version_compare(PHP_VERSION, '5.2.0')>= 0)
 				{
 					echo 'I am at least PHP version 5.2.0, my version: ' . PHP_VERSION . "\n";
-					$article->text = preg_replace('|(http://[a-zA-Z0-9./-]+)|e','$this->urlScrape("\1")', $article->text);
+					$article->text = preg_replace('|(http://[\?\&\#=a-zA-Z0-9./-\\?]+)|e','$this->urlScrape("\1")', $article->text);
 					return true;
 				}
 				
@@ -80,12 +80,22 @@ class plgContentFastPostPlugin extends JPlugin {
 				$useParse = false;
 				//$params = $this->params;
 				$domain = parse_url($url, PHP_URL_HOST);
-				//$path = parse_url($url, PHP_URL_PATH); 
-				//var_dump($domain);
+				$path = parse_url($url, PHP_URL_PATH); 
+				//var_dump($path);
+				$document =& JFactory::getDocument();
+				
 				
 				switch ($domain)
 				{
-					case 'cbc.ca': $useParse = true;
+					case 'cbc.ca': 
+					global $firstrunCBC;
+					if(empty($firstrunCBC)){
+						$document->addCustomTag( '<link rel="stylesheet" href="'.JURI::base().'plugins/content/fastPostPlugin/cbc.css" type="text/css" />' );
+						$firstrunCBC = true;
+					}
+					if(strpos($path,'/news/yourcommunity/') !== false){$useParse = false;} //handle community blog section
+					else{
+					$useParse = true;
 					$html = file_get_html($url);
 					foreach($html->find('img') as $element){$element->src='http://www.cbc.ca'.$element->src;}
 					$ret['title'] = $html->find('div[class="headline"] h1', 0)->innertext;
@@ -108,8 +118,10 @@ class plgContentFastPostPlugin extends JPlugin {
 					//var_dump($ret);
 					//var_dump($html);
 					//$article->title = $ret['title'];
-					$parsed= '<br><h1>'.$ret['title'].'</h1><br><h2>'.$ret['subtitle'].'</h2><br><h6>'.$ret['posted'].$ret['lastupdated'].'</h6><br>'.$ret['leadmedia'];
+					$parsed= '<h1>'.$ret['title'].'</h1><h2>'.$ret['subtitle'].'</h2><h6>'.$ret['posted'].$ret['lastupdated'].'</h6><br>'.$ret['leadmedia'];
 					$parsed.=$ret['storybody'];
+					$html->clear();
+					}
 					break;	
 					
 					case 'janinebandcroft.wordpress.com': 
@@ -149,11 +161,43 @@ class plgContentFastPostPlugin extends JPlugin {
 					}
 					
 					//var_dump($ret);
-					$parsed= '<br><h1>'.$ret['title'].'</h1><br><h6>'.$ret['entry-meta'].'</h6><br>'.$ret['audiolist'];
+					$parsed= '<h1>'.$ret['title'].'</h1><br><h6>'.$ret['entry-meta'].'</h6><br>'.$ret['audiolist'];
 					$parsed.=$ret['body'];
+					$html->clear();
 					break;
 					
 					
+					case 'thetyee.ca': 
+					$useParse = true;
+					$html = file_get_html($url);
+					
+					$ret['title'] = $html->find('h2[class="title"]', 0)->innertext;
+					$ret['subtitle'] = $html->find('p[class="tagline"]', 0)->innertext;
+					$ret['author'] = $html->find('div[class="node-inner"] p[class="meta"]', 0)->innertext;
+					
+					foreach($html->find('div[id="content-inner"] div[class="content"] p') as $element){
+						if($element->class == 'photo-insert') {
+							$element->style = 'float: right;width: 300px;clear: both;';
+							$element->innertext = $element->innertext.'<div style="float: right;width: 300px;clear: both;font-size: 0.9em;">'.$element->next_sibling().'</div>';
+							$skip = $element->next_sibling();
+						}
+						
+						if($skip == $element){ echo "skipped";$skip='';}
+						else {
+						 $ret['contentlist'][] = $element->outertext;
+						}
+
+					}
+					//var_dump($ret['contentlist']);
+					$ret['body'] = '';
+					foreach($ret['contentlist'] as $element){
+						if(strpos($element,'input') === false)$ret['body'].="<p>$element</p>";
+					}
+					
+					$parsed= '<h1>'.$ret['title'].'</h1><h2>'.$ret['subtitle'].'</h2><p>'.$ret['author'].'</p>';
+					$parsed.=$ret['body'];
+					$html->clear();
+					break;
 				}
 				
 				
