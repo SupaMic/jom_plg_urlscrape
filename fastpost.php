@@ -90,7 +90,7 @@ class plgContentFastPost extends JPlugin {
 					case 'cbc.ca': 
 					global $firstrunCBC;
 					if(empty($firstrunCBC)){
-						$document->addCustomTag( '<link rel="stylesheet" href="'.JURI::base().'plugins/content/fastPostPlugin/cbc.css" type="text/css" />' );
+						$document->addCustomTag( '<link rel="stylesheet" href="'.JURI::base().'plugins/content/fastpost/cbc.css" type="text/css" />' );
 						$firstrunCBC = true;
 					}
 					if(strpos($path,'/news/yourcommunity/') !== false){$useParse = false;} //handle community blog section
