@@ -14,5 +14,6 @@
 	<files>
 		<filename plugin="fastpost">fastpost.php</filename>
 		<filename>index.html</filename>
+		<filename>cbc.css</filename>
 	</files>
 </extension>

@@ -2,7 +2,7 @@
 /**
  * plugin fastPostPlugin
  * @version 0.6 - July 2013
- * @package fastPostPlugin
+ * @package fastpost
  * @copyright Copyright (c) SupaDupa Productions http://SupaDesign.ca
  * @license http://www.gnu.org/copyleft/gpl.html GNU/GPL
  */
@@ -21,10 +21,10 @@ defined('_JEXEC') or die( 'Restricted access' );
 jimport('joomla.plugin.plugin');
 jimport('simplehtmldom.simple_html_dom');
 
-class plgContentFastPostPlugin extends JPlugin {
+class plgContentFastPost extends JPlugin {
 
 
-	function plgContentFastPostPlugin( &$subject, $params )
+	function plgContentFastPost( &$subject, $params )
         {
                 parent::__construct( $subject, $params );
         }
