@@ -12,7 +12,7 @@
 	This Plugin requires latest <a href="http://www.raslab.org/en/filerepository/item/simple-html-dom-parser-library-for-joomla" target="_blank">PHP SimpleHTMLDOM Library v1.5 rev.208</a><br>
 	Remember to <a href="index.php?option=com_plugins">Enable Plugin</a>]]></description>
 	<files>
-		<filename plugin="fastPostPlugin">fastPostPlugin.php</filename>
+		<filename plugin="fastpost">fastpost.php</filename>
 		<filename>index.html</filename>
 	</files>
 </extension>
