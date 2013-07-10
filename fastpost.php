@@ -1,6 +1,6 @@
 <?php
 /**
- * plugin fastPostPlugin
+ * plugin fastpost
  * @version 0.6 - July 2013
  * @package fastpost
  * @copyright Copyright (c) SupaDupa Productions http://SupaDesign.ca
@@ -47,7 +47,7 @@ class plgContentFastPost extends JPlugin {
 				
                 $patterns = array(); 
 				$patterns[0] = '((<a href=")(http://[\?\&\#=a-zA-Z0-9./-]+)(">))';  //strip out a href to avoid duplicate
-				$patterns[1] = '([=FP ])'; //remove trigger =FP
+				$patterns[1] = '#(=FP)#'; //remove trigger =FP
 
                 $replacements = array();
                 $replacements[0] = '';
@@ -174,35 +174,59 @@ class plgContentFastPost extends JPlugin {
 					$ret['title'] = $html->find('h2[class="title"]', 0)->innertext;
 					$ret['subtitle'] = $html->find('p[class="tagline"]', 0)->innertext;
 					$ret['author'] = $html->find('div[class="node-inner"] p[class="meta"]', 0)->innertext;
-					
+					$skip='';
 					foreach($html->find('div[id="content-inner"] div[class="content"] p') as $element){
 						if($element->class == 'photo-insert') {
-							$element->style = 'float: right;width: 300px;clear: both;';
+							$element->style = 'float: right;width: 300px;clear: both;'; //set image style and add caption on next line
 							$element->innertext = $element->innertext.'<div style="float: right;width: 300px;clear: both;font-size: 0.9em;">'.$element->next_sibling().'</div>';
-							$skip = $element->next_sibling();
+							$skip = $element->next_sibling()->plaintext; //grab caption from next element and then skip adding it on next foreach pass
 						}
 						
-						if($skip == $element){ echo "skipped";$skip='';}
+						if(trim($skip) == trim($element->plaintext)){ $skip='';} //echo 'skipped='.$element;
 						else {
 						 $ret['contentlist'][] = $element->outertext;
 						}
-
 					}
 					//var_dump($ret['contentlist']);
 					$ret['body'] = '';
 					foreach($ret['contentlist'] as $element){
-						if(strpos($element,'input') === false)$ret['body'].="<p>$element</p>";
+						if(strpos($element,'input') === false)$ret['body'].=$element; //remove input tags while compiling body
 					}
 					
 					$parsed= '<h1>'.$ret['title'].'</h1><h2>'.$ret['subtitle'].'</h2><p>'.$ret['author'].'</p>';
 					$parsed.=$ret['body'];
 					$html->clear();
 					break;
+					
+					case 'focusonline.ca': 
+					$useParse = true;
+					$html = file_get_html($url);
+					foreach($html->find('img') as $element){if(strpos($element->src,'http://')===false)$element->src="http://$domain/".$element->src;}
+					foreach($html->find('a') as $element){if(strpos($element->href,'http://')===false)$element->href="http://$domain/".$element->href;}
+					
+					$ret['title'] = $html->find('div[id="content"] h1[class="node-title"]', 0)->innertext;
+					$ret['author'] = $html->find('div[id="content"] div[class="content"] h3', 0)->innertext;
+										
+					foreach($html->find('div[id="content"] div[class="content"] p') as $element){
+						$ret['body'].=$element;
+					}
+					
+					$ret['issuecover'] = $html->find('div[id="sidebar-second"] div[class="inner"] div[class="content"]', 0)->innertext;
+					//$issuecontent = str_get_html($ret['issuecover']);
+					//foreach($issuecontent->find('a') as $element){if(strpos($element->href,'http://')===false)$element->href="http://$domain/".$element->href;}
+					//$ret['issuecover'] = $issuecontent->innertext;
+
+					$parsed.= '<h1>'.$ret['title'].'</h1><p>'.$ret['author'].'</p>';
+					$parsed.= '<div style="width:180px;float:right;margin:0 10px;text-align:center;line-height:.5em;">'.$ret['issuecover'].'</div>';
+					$parsed.=$ret['body'];
+
+					$html->clear();
+					break;
 				}
 				
 				
 				if($useParse){
-					return $parsed.'<p><a href="'.$url.'" target="_blank">'.$url.'</a><br><h6>FastPost Article</h6></p>';
+					return $parsed.'<p><a href="'.$url.'" target="_blank">'.$url.' <h6>FastPost Article</h6></a></p>';
 				}
 				else{
 					return '<a href="'.$url.'" target="_blank">'.$url.'</a>';
