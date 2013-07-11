@@ -75,20 +75,24 @@ class plgContentFastPost extends JPlugin {
                 return true;
         }
 
-		public function _graceGet( $find, $type, $html ) 
+		public function _tidy( $find, $type, $html, $index = 0) 
 		{
-			//This functions is for gracefully getting a single element(first only), if no element available then no php warnings or notices
+			//This functions is for gracefully getting a single element(default first), if no element from find phrase then no php warnings or notices
 			if($type=='inner'){
 				foreach($html->find($find)as $element)
-					return $html->find($find, 0)->innertext;
+					return $html->find($find, $index)->innertext;
 			}
 			elseif($type=='outer'){
 				foreach($html->find($find)as $element)
-					return $html->find($find, 0)->outertext;
+					return $html->find($find, $index)->outertext;
 			}
 			elseif($type=='plain'){
 				foreach($html->find($find)as $element)
-					return $html->find($find, 0)->plaintext;
+					return $html->find($find, $index)->plaintext;
+			}			
+			elseif($type=='tag'){
+				foreach($html->find($find)as $element)
+					return $html->find($find, $index)->tag;
 			}
 			else{
 			 return false;
@@ -106,9 +110,7 @@ class plgContentFastPost extends JPlugin {
 				//var_dump($path);
 				$document =& JFactory::getDocument();
 
-
-
-
+				
 				switch ($domain)
 				{
 					case 'cbc.ca': 
@@ -118,57 +120,62 @@ class plgContentFastPost extends JPlugin {
 					else{
 					$useParse = true;
 					$html = file_get_html($url);
-					if(empty($firstrunCBC)){
+					if(empty($firstrunCBC)){ //set to add cbc.css only once if multiple CBC articles are loading on the same page
 						$document->addCustomTag( '<link rel="stylesheet" href="'.JURI::base().'plugins/content/fastpost/cbc.css" type="text/css" />' );
-						/*
-						foreach($html->find('script[type="text/javascript"]') as $element){ 
-							if(isset($element->src)){
-								if(strpos($element->src,'http://') || strpos($element->src,'//') ===false){$element->src="http://$domain".$element->src;}
-							}
-							$document->addCustomTag($element->outertext);
-						}*/
 						$firstrunCBC = true;
 					}
 					foreach($html->find('img') as $element){if(strpos($element->src,'http://')===false)$element->src="http://$domain/".$element->src;}
-					$ret['title'] = $html->find('div[class="headline"] h1', 0)->innertext;
+					foreach($html->find('a') as $element){if(strpos($element->href,'http://')===false)$element->href="http://$domain/".$element->href;}
+					$ret['title'] = $this->_tidy('div[class="headline"] h1','inner', $html);
+					$ret['subtitle'] = $this->_tidy('[id="storyhead"]h3.deck','inner', $html);
+					$ret['posted'] = $this->_tidy('[id="storyhead"]h4.posted','inner', $html);
+					$ret['lastupdated'] = $this->_tidy('[id="storyhead"]h4.lastupdated','inner', $html);
+					$ret['leadmedia'] = $this->_tidy('[id="leadmedia"]','inner', $html);
+					//echo $ret['leadmedia'];
+
+					foreach($html->find('div[id*="video"]') as $element){$ret['videos'][]=$element;}//not working(possibly js err)
+					//var_dump($ret['videos']);
+					
+					$ret['storybody'] = $this->_tidy('[id="storybody"]','inner', $html);
+
+					$parsed.= '<h1>'.$ret['title'].'</h1><h2>'.$ret['subtitle'].'</h2><h6>'.$ret['posted'].$ret['lastupdated'].'</h6><br>'.$ret['leadmedia'];
+					$parsed.=$ret['storybody'];
+					$html->clear();
+				/* separating commments from used
 					//$ret['title'] = $html->find('[id="storyhead"]h1', 0)->innertext;
 					//$ret['subtitle'] = $html->find('h3[class="deck"]', 0)->innertext;
-					$ret['subtitle'] = $this->_graceGet('[id="storyhead"]h3.deck','inner', $html);
-						//$html->find('[id="storyhead"]h3.deck', 0)->innertext;
+					//$html->find('[id="storyhead"]h3.deck', 0)->innertext;
 					//$ret['posted'] = $html->find('h4[class="posted"]', 0)->innertext;
-					$ret['posted'] = $html->find('[id="storyhead"]h4.posted', 0)->innertext;
 					//$ret['lastupdated'] = $html->find('h4[class="lastupdated"]', 0)->innertext;
-					$ret['lastupdated'] = $html->find('[id="storyhead"]h4.lastupdated', 0)->innertext;
-					$ret['leadmedia'] = $html->find('div[id="leadmedia"]', 0)->innertext;
-					echo $ret['leadmedia'];
-
-					foreach($html->find('div[id*="video"]') as $element){$ret['videos'][]=$element;}
-					var_dump($ret['videos']);//var_dump($html->find('[id*=head]')->outertext);
+					//var_dump($html->find('[id*=head]')->outertext);
 					//Broke $ret['leadmediaimage'] = $html->find('[class="leadimage"]img', 0)->src;
 					//Broke $ret['leadmediaimage'] = $ret['leadmedia']->find('img[src]');
 					//$ret['leadmediacaption'] = $html->find('[id="leadmedia"]em.caption', 0)->innertext;
 					//Broke $ret['video'] = $html->find('div[id^="video"]', 0)->innertext;
 					//Broke $ret['video1'] = $html->find('[id="video"]', 0)->innertext;
 					//Broke $ret['video2'] = $html->find('[class="tpmedia video"]', 0)->innertext;
-					$ret['storybody'] = $html->find('[id="storybody"]', 0)->innertext;
 					//$ret['sidebar'] = $html->find('div[class="sidebar"]', 0)->innertext;
-					//var_dump($ret);
-					//var_dump($html);
 					//$article->title = $ret['title'];
-					$parsed.= '<h1>'.$ret['title'].'</h1><h2>'.$ret['subtitle'].'</h2><h6>'.$ret['posted'].$ret['lastupdated'].'</h6><br>'.$ret['leadmedia'];
-					$parsed.=$ret['storybody'];
-					$html->clear();
+					grab js files but too many and not able to distinguish since no other attributes in tag, also grabs from inside and outside <body>
+						foreach($html->find('script[type="text/javascript"]') as $element){ 
+							if(isset($element->src)){
+								if(strpos($element->src,'http://') || strpos($element->src,'//') ===false){$element->src="http://$domain".$element->src;}
+							}
+							$document->addCustomTag($element->outertext);
+						}
+				*/
+					
 					}
 					break;	
 
 					case 'janinebandcroft.wordpress.com': 
 					$useParse = true;
 					$html = file_get_html($url);
+					foreach($html->find('img') as $element){if(strpos($element->src,'http://')===false)$element->src="http://$domain/".$element->src;}
+					foreach($html->find('a') as $element){if(strpos($element->href,'http://')===false)$element->href="http://$domain/".$element->href;}
 
-					$ret['title'] = $html->find('h2[class="entry-title"]', 0)->innertext;
-					$ret['entry-meta'] = $html->find('div[class="entry-meta"]', 0)->innertext;
-					//$ret['audio'] = $html->find('span[style="text-align:left;display:block;"] p', 0)->innertext;
-					//$ret['audio'] = $html->find('audio[id] span', 0)->innertext;
+					$ret['title'] = $this->_tidy('h2[class="entry-title"]', 'inner', $html);
+					$ret['meta'] = $this->_tidy('div[class="entry-meta"]', 'inner', $html);
 					foreach($html->find('audio[id] span') as $element){
 						$ret['audio'][] = $element->innertext;
 					}
@@ -176,37 +183,6 @@ class plgContentFastPost extends JPlugin {
 					$ret['audiolist']='';
 					foreach ($ret['audio'] as $value){
 						$ret['audiolist'].=$value.'<br>';}
-
-					/*foreach($html->find('audio span') as $element){
-					echo $element;}
-					foreach($html->find('object[type="application/x-shockwave-flash"] span[id] audio[id]') as $element){ 
-							if(isset($element->src)){
-								if(strpos($element->src,'http://') || strpos($element->src,'//') ===false){$element->src="http://$domain".$element->src;}
-							}
-							$ret['audio'][] = $element->first_child()->innertext;
-							echo 'script parent=';var_dump($element->first_child()->innertext);
-							//if(strlen($element) > 10000){echo 'break';break;}
-						}*/
-					//echo $ret['audio'];
-					//echo $ret['audio'][1];
-					//echo $html->find('audio[id] span',-1);
-					//$ret['entry-content'] = $html->find('div[class="entry-content"]', 0)->innertext;
-					//$ret['entry-content'][] = $html->find('div[class="entry-content"] p',0)->innertext;
-					//$ret['entry-content'][] = $html->find('div[class="entry-content"] p',1)->innertext;
-					//$ret['entry-content'][] = $html->find('div[class="entry-content"] p',2)->innertext;
-					/*foreach($html->find('div[class="entry-content"] p') as $element){
-						if(strlen($element->innertext)<10000){
-							$ret['entry-content'][] = $element->innertext;
-						}
-						else {
-							//echo $element->innertext;
-							$jsErr = str_get_html($element->innertext);
-							foreach($jsErr->find('div') as $e)if($e->find('[class="wpa"]')){break;}
-							
-							//echo 'oversize'.$jsErr->plaintext;
-							//break;
-						}
-					}*/
 
 					$i=0;
 					$ret['sizecheck'] = strlen($html->find('div[class="entry-content"] p',$i)->innertext);
@@ -221,27 +197,70 @@ class plgContentFastPost extends JPlugin {
 						$ret['body'] .= '<p>'.$value.'</p>';
 					}
 
-					//var_dump($ret);
-					$parsed= '<h1>'.$ret['title'].'</h1><br><h6>'.$ret['entry-meta'].'</h6><br>'.$ret['audiolist'];
+					$parsed.= '<h1>'.$ret['title'].'</h1><br><h6>'.$ret['meta'].'</h6><br>'.$ret['audiolist'];
 					$parsed.=$ret['body'];
 					$html->clear();
+					
+				/* Comment tests
+					//$ret['audio'] = $html->find('span[style="text-align:left;display:block;"] p', 0)->innertext;
+					//$ret['audio'] = $html->find('audio[id] span', 0)->innertext;
+					
+				Tests to use foreach instead of while but pulls one div incorrectly at end, may be an indication of how to solve js issue
+				   foreach($html->find('audio span') as $element){
+					echo $element;}
+					foreach($html->find('object[type="application/x-shockwave-flash"] span[id] audio[id]') as $element){ 
+							if(isset($element->src)){
+								if(strpos($element->src,'http://') || strpos($element->src,'//') ===false){$element->src="http://$domain".$element->src;}
+							}
+							$ret['audio'][] = $element->first_child()->innertext;
+							echo 'script parent=';var_dump($element->first_child()->innertext);
+							//if(strlen($element) > 10000){echo 'break';break;}
+						}*/
+					
+				/* 
+					foreach($html->find('div[class="entry-content"] p') as $element){
+						if(strlen($element->innertext)<10000){
+							$ret['entry-content'][] = $element->innertext;
+						}
+						else {
+							//echo $element->innertext;
+							$jsErr = str_get_html($element->innertext);
+							foreach($jsErr->find('div') as $e)if($e->find('[class="wpa"]')){break;}
+							//echo 'oversize'.$jsErr->plaintext;
+							//break;
+						}
+					}
+					//echo $ret['audio'];
+					//echo $ret['audio'][1];
+					//echo $html->find('audio[id] span',-1);
+					//$ret['entry-content'] = $html->find('div[class="entry-content"]', 0)->innertext;
+					//$ret['entry-content'][] = $html->find('div[class="entry-content"] p',0)->innertext;
+					//$ret['entry-content'][] = $html->find('div[class="entry-content"] p',1)->innertext;
+					//$ret['entry-content'][] = $html->find('div[class="entry-content"] p',2)->innertext;
+					*/
+					
 					break;
 
 
 					case 'thetyee.ca': 
 					$useParse = true;
 					$html = file_get_html($url);
+					foreach($html->find('img') as $element){if(strpos($element->src,'http://')===false)$element->src="http://$domain/".$element->src;}
 					foreach($html->find('a') as $element){if(strpos($element->href,'http://')===false)$element->href="http://$domain/".$element->href;}
 
-
-					$ret['title'] = $html->find('h2[class="title"]', 0)->innertext;
-					$ret['subtitle'] = $html->find('p[class="tagline"]', 0)->innertext;
-					$ret['author'] = $html->find('div[class="node-inner"] p[class="meta"]', 0)->innertext;
-					$skip='';
+					$ret['title'] = $this->_tidy('h2[class="title"]', 'inner', $html);
+					$ret['subtitle'] = $this->_tidy('p[class="tagline"]', 'inner', $html);
+					$ret['meta'] = $this->_tidy('div[class="node-inner"] p[class="meta"]','inner', $html);
+					
+					foreach($html->find('div[class="photo-caption"]') as $e){ //match tyee photo caption styling
+						$e->first_child()->setAttribute('style','font-family: \'Lucida Grande\', Verdana, sans-serif;margin: 15px 5px;font-size: 0.7em;');}
+					
+					$skip=''; //this takes the caption paragraph out of main story and replicates it under the image(only works since they are siblings)
 					foreach($html->find('div[id="content-inner"] div[class="content"] p') as $element){
 						if($element->class == 'photo-insert') {
 							$element->style = 'float: right;width: 300px;clear: both;'; //set image style and add caption on next line
-							$element->innertext = $element->innertext.'<div style="float: right;width: 300px;clear: both;font-size: 0.9em;">'.$element->next_sibling().'</div>';
+							$element->innertext = $element->innertext.'<div style="float: right;width: 300px;clear: both;">'.$element->next_sibling().'</div>';
+							
 							$skip = $element->next_sibling()->plaintext; //grab caption from next element and then skip adding it on next foreach pass
 						}
 
@@ -250,13 +269,14 @@ class plgContentFastPost extends JPlugin {
 						 $ret['contentlist'][] = $element->outertext;
 						}
 					}
+					
 					//var_dump($ret['contentlist']);
 					$ret['body'] = '';
 					foreach($ret['contentlist'] as $element){
 						if(strpos($element,'input') === false)$ret['body'].=$element; //remove input tags while compiling body
 					}
 
-					$parsed= '<h1>'.$ret['title'].'</h1><h2>'.$ret['subtitle'].'</h2><p>'.$ret['author'].'</p>';
+					$parsed= '<h1>'.$ret['title'].'</h1><h2>'.$ret['subtitle'].'</h2><p>'.$ret['meta'].'</p>';
 					$parsed.=$ret['body'];
 					$html->clear();
 					break;
@@ -267,38 +287,44 @@ class plgContentFastPost extends JPlugin {
 					foreach($html->find('img') as $element){if(strpos($element->src,'http://')===false)$element->src="http://$domain/".$element->src;}
 					foreach($html->find('a') as $element){if(strpos($element->href,'http://')===false)$element->href="http://$domain/".$element->href;}
 
-					//$ret['title']='';$ret['author']='';
-					//foreach($html->find('div[id="content"] h1[class="node-title"]')as $element)
-						//$ret['title'] = $html->find('div[id="content"] h1[class="node-title"]', 0)->innertext;
-					//foreach($html->find('div[id="content"] div[class="content"] h3')as $element)
-						//$ret['author'] = $html->find('div[id="content"] div[class="content"] h3', 0)->innertext;
-					//created _graceGet function to replace above above lines and avoid missing object calls if bad URL or element missing
-					$ret['title']= $this->_graceGet('div[id="content"] h1[class="node-title"]','inner',$html);
-					$ret['author']= $this->_graceGet('div[id="content"] div[class="content"] h3','inner',$html);
+					$ret['title']= $this->_tidy('div[id="content"] h1[class="node-title"]','inner',$html);
+					$ret['author']= $this->_tidy('div[id="content"] div[class="content"] h3','inner',$html);
 
 					$ret['body']='';
 					foreach($html->find('div[id="content"] div[class="content"] p') as $element){
 						$ret['body'].=$element;
 					}
 
-					$ret['issuecover']= $this->_graceGet('div[id="sidebar-second"] div[class="inner"] div[class="content"]','inner',$html);
+					$ret['issuecover']= $this->_tidy('div[id="sidebar-second"] div[class="inner"] div[class="content"]','inner',$html);
+					$ret['attachments']='';
+					foreach($html->find('table[id="attachments"]')as $element)$ret['attachments'] = $html->find('table[id="attachments"]', 0)->outertext;
+
+					$parsed.= '<h1>'.$ret['title'].'</h1><p>'.$ret['author'].'</p>';
+					$parsed.= '<div style="width:180px;float:right;margin:0 10px;text-align:center;line-height:.5em;">'.$ret['issuecover'].'</div>';
+					$parsed.=$ret['body'];
+					if(!empty($ret['attachments']))
+						$parsed.='<br>'.$ret['attachments'];
+					
+					echo strlen($ret['issuecover']);
+					if(strlen($parsed) < 500){$useParse = false;}				
+					$html->clear();
+					
+					//$ret['title']='';$ret['author']='';
+					//foreach($html->find('div[id="content"] h1[class="node-title"]')as $element)
+						//$ret['title'] = $html->find('div[id="content"] h1[class="node-title"]', 0)->innertext;
+					//foreach($html->find('div[id="content"] div[class="content"] h3')as $element)
+						//$ret['author'] = $html->find('div[id="content"] div[class="content"] h3', 0)->innertext;
+					//created _tidy function to replace above above lines and avoid missing object calls if bad URL or element missing
+					
 					//$ret['issuecover'] = $html->find('div[id="sidebar-second"] div[class="inner"] div[class="content"]', 0)->innertext;
 					//$issuecontent = str_get_html($ret['issuecover']);
 					//foreach($issuecontent->find('a') as $element){if(strpos($element->href,'http://')===false)$element->href="http://$domain/".$element->href;}
 					//$ret['issuecover'] = $issuecontent->innertext;
-					$ret['attachments']='';
-					foreach($html->find('table[id="attachments"]')as $element)$ret['attachments'] = $html->find('table[id="attachments"]', 0)->outertext;
-
-					$parsed= '<h1>'.$ret['title'].'</h1><p>'.$ret['author'].'</p>';
-					$parsed.= '<div style="width:180px;float:right;margin:0 10px;text-align:center;line-height:.5em;">'.$ret['issuecover'].'</div>';
-					$parsed.=$ret['body'];
-					//if(!empty($ret['attachments']))
-					$parsed.='<br>'.$ret['attachments'];
-
-					$html->clear();
+					
 					break;
 				}
 
+				
 
 				if($useParse){
 					return $parsed.'<p><a href="'.$url.'" target="_blank">'.$url.' <h6>FastPost Article</h6></a></p>';
