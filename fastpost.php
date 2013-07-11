@@ -28,7 +28,7 @@ class plgContentFastPost extends JPlugin {
         {
                 parent::__construct( $subject, $params );
         }
-		
+
 
         /**
         * Example prepare content method
@@ -45,7 +45,7 @@ class plgContentFastPost extends JPlugin {
                 if (JString::strpos($article->text, '=FP') === false)  {
 					return true;
                 }
-				
+
                 $patterns = array(); 
 				$patterns[0] = '((<a href=")(http://[\?\&\#=a-zA-Z0-9./-]+)(">))';  //strip out a href to avoid duplicate
 				$patterns[1] = '#(=FP)#'; //remove trigger =FP
@@ -53,9 +53,9 @@ class plgContentFastPost extends JPlugin {
                 $replacements = array();
                 $replacements[0] = '';
                 $replacements[1] = '';
-				
+
 				$article->text = preg_replace($patterns, $replacements, $article->text); 
-					
+
 				if (version_compare(PHP_VERSION, '5.4.0') >= 0) {
 					echo 'I am at least PHP version 5.4.0, my version: ' . PHP_VERSION . "\n";
 					$article->text = preg_replace_callback('(http://[\?\&\#=a-zA-Z0-9./-]+)',function ($m){return $this->urlScrape($m[0]);}, $article->text);
@@ -71,10 +71,10 @@ class plgContentFastPost extends JPlugin {
 					$article->text = preg_replace('|(http://[\?\&\#=a-zA-Z0-9./-\\?]+)|e','$this->urlScrape("\1")', $article->text);
 					return true;
 				}
-				
+
                 return true;
         }
-		
+
 		public function _graceGet( $find, $type, $html ) 
 		{
 			//This functions is for gracefully getting a single element(first only), if no element available then no php warnings or notices
@@ -105,10 +105,10 @@ class plgContentFastPost extends JPlugin {
 				$path = parse_url($url, PHP_URL_PATH); 
 				//var_dump($path);
 				$document =& JFactory::getDocument();
-				
-				
-				
-				
+
+
+
+
 				switch ($domain)
 				{
 					case 'cbc.ca': 
@@ -160,7 +160,7 @@ class plgContentFastPost extends JPlugin {
 					$html->clear();
 					}
 					break;	
-					
+
 					case 'janinebandcroft.wordpress.com': 
 					$useParse = true;
 					$html = file_get_html($url);
@@ -172,11 +172,11 @@ class plgContentFastPost extends JPlugin {
 					foreach($html->find('audio[id] span') as $element){
 						$ret['audio'][] = $element->innertext;
 					}
-					
+
 					$ret['audiolist']='';
 					foreach ($ret['audio'] as $value){
 						$ret['audiolist'].=$value.'<br>';}
-					
+
 					/*foreach($html->find('audio span') as $element){
 					echo $element;}
 					foreach($html->find('object[type="application/x-shockwave-flash"] span[id] audio[id]') as $element){ 
@@ -189,48 +189,51 @@ class plgContentFastPost extends JPlugin {
 						}*/
 					//echo $ret['audio'];
 					//echo $ret['audio'][1];
-					//echo $html->find('audio[id] span',-1) ;
+					//echo $html->find('audio[id] span',-1);
 					//$ret['entry-content'] = $html->find('div[class="entry-content"]', 0)->innertext;
 					//$ret['entry-content'][] = $html->find('div[class="entry-content"] p',0)->innertext;
 					//$ret['entry-content'][] = $html->find('div[class="entry-content"] p',1)->innertext;
 					//$ret['entry-content'][] = $html->find('div[class="entry-content"] p',2)->innertext;
-					foreach($html->find('div[class="entry-content"] p') as $element){
+					/*foreach($html->find('div[class="entry-content"] p') as $element){
 						if(strlen($element->innertext)<10000){
 							$ret['entry-content'][] = $element->innertext;
 						}
 						else {
-							echo $element->innertext;
+							//echo $element->innertext;
 							$jsErr = str_get_html($element->innertext);
-							echo 'oversize'.$jsErr->plaintext;
+							foreach($jsErr->find('div') as $e)if($e->find('[class="wpa"]')){break;}
+							
+							//echo 'oversize'.$jsErr->plaintext;
+							//break;
 						}
-					}
-					
-					/*$i=0;
+					}*/
+
+					$i=0;
 					$ret['sizecheck'] = strlen($html->find('div[class="entry-content"] p',$i)->innertext);
 					while ($ret['sizecheck'] < 10000){
 						$ret['entry-content'][] = $html->find('div[class="entry-content"] p',$i)->innertext;
 						$i++;
 						$ret['sizecheck'] = strlen($html->find('div[class="entry-content"] p',$i)->innertext);
 					}
-					*/
+					
 					$ret['body']='';
 					foreach ($ret['entry-content'] as $value) {
 						$ret['body'] .= '<p>'.$value.'</p>';
 					}
-					
+
 					//var_dump($ret);
 					$parsed= '<h1>'.$ret['title'].'</h1><br><h6>'.$ret['entry-meta'].'</h6><br>'.$ret['audiolist'];
 					$parsed.=$ret['body'];
 					$html->clear();
 					break;
-					
-					
+
+
 					case 'thetyee.ca': 
 					$useParse = true;
 					$html = file_get_html($url);
 					foreach($html->find('a') as $element){if(strpos($element->href,'http://')===false)$element->href="http://$domain/".$element->href;}
-					
-					
+
+
 					$ret['title'] = $html->find('h2[class="title"]', 0)->innertext;
 					$ret['subtitle'] = $html->find('p[class="tagline"]', 0)->innertext;
 					$ret['author'] = $html->find('div[class="node-inner"] p[class="meta"]', 0)->innertext;
@@ -241,7 +244,7 @@ class plgContentFastPost extends JPlugin {
 							$element->innertext = $element->innertext.'<div style="float: right;width: 300px;clear: both;font-size: 0.9em;">'.$element->next_sibling().'</div>';
 							$skip = $element->next_sibling()->plaintext; //grab caption from next element and then skip adding it on next foreach pass
 						}
-						
+
 						if(trim($skip) == trim($element->plaintext)){ $skip='';} //echo 'skipped='.$element;
 						else {
 						 $ret['contentlist'][] = $element->outertext;
@@ -252,18 +255,18 @@ class plgContentFastPost extends JPlugin {
 					foreach($ret['contentlist'] as $element){
 						if(strpos($element,'input') === false)$ret['body'].=$element; //remove input tags while compiling body
 					}
-					
+
 					$parsed= '<h1>'.$ret['title'].'</h1><h2>'.$ret['subtitle'].'</h2><p>'.$ret['author'].'</p>';
 					$parsed.=$ret['body'];
 					$html->clear();
 					break;
-					
+
 					case 'focusonline.ca': 
 					$useParse = true;
 					$html = file_get_html($url);
 					foreach($html->find('img') as $element){if(strpos($element->src,'http://')===false)$element->src="http://$domain/".$element->src;}
 					foreach($html->find('a') as $element){if(strpos($element->href,'http://')===false)$element->href="http://$domain/".$element->href;}
-					
+
 					//$ret['title']='';$ret['author']='';
 					//foreach($html->find('div[id="content"] h1[class="node-title"]')as $element)
 						//$ret['title'] = $html->find('div[id="content"] h1[class="node-title"]', 0)->innertext;
@@ -272,12 +275,12 @@ class plgContentFastPost extends JPlugin {
 					//created _graceGet function to replace above above lines and avoid missing object calls if bad URL or element missing
 					$ret['title']= $this->_graceGet('div[id="content"] h1[class="node-title"]','inner',$html);
 					$ret['author']= $this->_graceGet('div[id="content"] div[class="content"] h3','inner',$html);
-					
+
 					$ret['body']='';
 					foreach($html->find('div[id="content"] div[class="content"] p') as $element){
 						$ret['body'].=$element;
 					}
-					
+
 					$ret['issuecover']= $this->_graceGet('div[id="sidebar-second"] div[class="inner"] div[class="content"]','inner',$html);
 					//$ret['issuecover'] = $html->find('div[id="sidebar-second"] div[class="inner"] div[class="content"]', 0)->innertext;
 					//$issuecontent = str_get_html($ret['issuecover']);
@@ -295,8 +298,8 @@ class plgContentFastPost extends JPlugin {
 					$html->clear();
 					break;
 				}
-				
-				
+
+
 				if($useParse){
 					return $parsed.'<p><a href="'.$url.'" target="_blank">'.$url.' <h6>FastPost Article</h6></a></p>';
 				}
@@ -304,8 +307,8 @@ class plgContentFastPost extends JPlugin {
 					return '<a href="'.$url.'" target="_blank">'.$url.'</a>';
 				}
         }
-		
-		
+
+
 }
 
 ?>
