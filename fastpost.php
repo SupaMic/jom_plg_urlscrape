@@ -305,7 +305,7 @@ class plgContentFastPost extends JPlugin {
 					if(!empty($ret['attachments']))
 						$parsed.='<br>'.$ret['attachments'];
 					
-					echo strlen($ret['issuecover']);
+					//echo strlen($ret['issuecover']);
 					if(strlen($parsed) < 500){$useParse = false;}				
 					$html->clear();
 					
@@ -322,6 +322,48 @@ class plgContentFastPost extends JPlugin {
 					//$ret['issuecover'] = $issuecontent->innertext;
 					
 					break;
+					
+					case 'aljazeera.com': 
+					
+					$useParse = true;
+					$html = file_get_html($url);
+					foreach($html->find('img') as $element){if(strpos($element->src,'http://')===false)$element->src="http://$domain/".$element->src;}
+					foreach($html->find('a') as $element){if(strpos($element->href,'http://')===false)$element->href="http://$domain/".$element->href;}
+					
+					global $firstrunALJAZ;
+					if(empty($firstrunALJAZ)){ //Set custom styling
+						$document->addCustomTag( '<style type="text/css">.articleMediaCaption{background: rgba(0, 0, 0, 0.6);position: relative;bottom: 45px;left: 0;right: 0;text-align: left;padding: 4px 8px;color: white;font-size: 10px;font-family: Verdana;font-weight: bold;width:100%;}</style>' );
+						$firstrunALJAZ = true;
+					}
+					
+					$ret['title']= $this->_tidy('[id="DetailedTitle"]','outer',$html);
+					$ret['subtitle']= $this->_tidy('[class="articleSumm"]','outer',$html);
+					$ret['author']= $this->_tidy('div[id="dvAuthorInfo"]','outer',$html);
+					$ret['meta']= '<h5>'.$this->_tidy('div[id="dvByLine_Date"]','inner',$html).'</h5>';
+					$ret['media']=$this->_tidy('div[id="mediaContainer"]','inner',$html);
+					
+					$ret['body']='';
+					foreach($html->find('td[class="DetailedSummary"]') as $element){
+						foreach($element->children as $e){
+							if(strpos($e->style,'margin-left: -')==true){ //override styling for elements with negative left margins
+								$style = $e->getAttribute('style');
+								$style = $style.'margin-left: 0;';
+								$e->SetAttribute('style', $style);
+							}
+							$ret['body'].=$e;
+						}
+					}
+					if(strpos($path,'/indepth/inpictures/') !== false){//handle inpictures section
+						foreach($html->find('[id*="cphBody_dvLayoutView"]') as $element){
+							$ret['body'].=$element;
+						}
+					} 
+					$ret['source']= $this->_tidy('[class="SourceBarTitle"]','inner',$html)."<br>";
+					
+					foreach($ret as $element){$parsed.=$element;} 
+					
+					break;
+					
 				}
 
 				
