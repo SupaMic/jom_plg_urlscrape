@@ -45,37 +45,45 @@ class plgContentFastPost extends JPlugin {
                 if (JString::strpos($article->text, '=FP') === false)  {
 					return true;
                 }
-
+								
                 $patterns = array(); 
-				$patterns[0] = '((<a href=")(http://[\?\&\#=a-zA-Z0-9./-]+)(">))';  //strip out a href to avoid duplicate
+				$patterns[0] = '((<a href=")(http://[\_\?\&\#=a-zA-Z0-9./-]+)(">))';  //strip out a href to avoid duplicate
 				$patterns[1] = '#(=FP)#'; //remove trigger =FP
-
+				$ssl=false;
+				if (JString::strpos($article->text, 'https') != false){
+					$patterns[2] = '((<a href=")(https://[\_\?\&\#=a-zA-Z0-9./-]+)(">))'; 
+					$ssl=true;
+				}
                 $replacements = array();
                 $replacements[0] = '';
                 $replacements[1] = '';
+                $replacements[2] = '';
 
 				$article->text = preg_replace($patterns, $replacements, $article->text); 
 
 				if (version_compare(PHP_VERSION, '5.4.0') >= 0) {
 					echo 'I am at least PHP version 5.4.0, my version: ' . PHP_VERSION . "\n";
-					$article->text = preg_replace_callback('(http://[\?\&\#=a-zA-Z0-9./-]+)',function ($m){return $this->urlScrape($m[0]);}, $article->text);
+					$article->text = preg_replace_callback('(http://[\_\?\&\#=a-zA-Z0-9./-]+)',function ($m){return $this->urlScrape($m[0]);}, $article->text);
+					if($ssl)$article->text = preg_replace_callback('(https://[\_\?\&\#=a-zA-Z0-9./-]+)',function ($m){return $this->urlScrape($m[0]);}, $article->text);
 					return true;
 				}elseif(version_compare(PHP_VERSION, '5.3.0')>= 0)
 				{
 					echo 'I am at least PHP version 5.3.0, my version: ' . PHP_VERSION . "\n";
-					$article->text = preg_replace('|(http://[\?\&\#=a-zA-Z0-9./-]+)|e','$this->urlScrape("\1")', $article->text);
+					$article->text = preg_replace('|(http://[\_\?\&\#=a-zA-Z0-9./-]+)|e','$this->urlScrape("\1")', $article->text);
+					if($ssl)$article->text = preg_replace('|(https://[\_\?\&\#=a-zA-Z0-9./-]+)|e','$this->urlScrape("\1")', $article->text);
 					return true;
 				}elseif(version_compare(PHP_VERSION, '5.2.0')>= 0)
 				{
 					echo 'I am at least PHP version 5.2.0, my version: ' . PHP_VERSION . "\n";
-					$article->text = preg_replace('|(http://[\?\&\#=a-zA-Z0-9./-\\?]+)|e','$this->urlScrape("\1")', $article->text);
+					$article->text = preg_replace('|(http://[\_\?\&\#=a-zA-Z0-9./-]+)|e','$this->urlScrape("\1")', $article->text);
+					if($ssl)$article->text = preg_replace('|(https://[\_\?\&\#=a-zA-Z0-9./-]+)|e','$this->urlScrape("\1")', $article->text);
 					return true;
 				}
 
                 return true;
         }
 
-		public function _tidy( $find, $type, $html, $index = 0) 
+		public function _tidy( $find, $type, &$html, $index = 0) 
 		{
 			//This functions is for gracefully getting a single element(default first), if no element from find phrase then no php warnings or notices
 			if($type=='inner'){
@@ -107,9 +115,10 @@ class plgContentFastPost extends JPlugin {
 				//$params = $this->params;
 				$domain = parse_url($url, PHP_URL_HOST);
 				$path = parse_url($url, PHP_URL_PATH); 
-				//var_dump($path);
-				$document =& JFactory::getDocument();
 
+				$document =& JFactory::getDocument();
+$h1 = '<h1>';$h1_ = '</h1>';$h2 = '<h2>';$h2_ = '</h2>';$h3 = '<h3>';$h3_ = '</h3>';$h4 = '<h4>';$h4_ = '</h4>';$h5 = '<h5>';$h5_ = '</h5>';
+				
 				
 				switch ($domain)
 				{
@@ -364,6 +373,83 @@ class plgContentFastPost extends JPlugin {
 					
 					break;
 					
+					
+					
+					case 'ted.com': 
+					
+					$useParse = true;
+					$html = file_get_html($url);
+					foreach($html->find('img') as $element){
+						if(strpos($element->src,'//')===false){
+							if(strpos($element->src,'http://')===false){$element->src="http://$domain/".$element->src;}
+						}
+					}
+					foreach($html->find('a') as $element){if(strpos($element->href,'http://')===false)$element->href="http://$domain".$element->href;}
+					
+					global $firstrunTED;
+					if(empty($firstrunTED)){ //Set custom styling
+						$document->addCustomTag( '<style type="text/css">p.user-blurb,p.show-info,p.more-download{visibility:hidden;}#contextual {width: 332px;background: #fff;float:right;}.talk-meta span {text-transform: uppercase;}.talk-meta {margin: 0 0 9px 7px;color: #999;}</style>' );
+						$firstrunTED= true;
+					}
+										
+					if(strpos($path,'talks/') !== false){
+						$ret['title']=$h1.$this->_tidy('span[id="altHeadline"]','inner',$html).$h1_;
+						$ret['meta']=$this->_tidy('div[class="talk-meta"]','outer',$html);
+						$ret['body']='<iframe src="http://embed.ted.com'.$path.'" width="640" height="360" frameborder="0" scrolling="no" webkitAllowFullScreen mozallowfullscreen allowFullScreen></iframe>';
+						$ret['media']=$this->_tidy('div[class="talk-intro"]','inner',$html);
+						$ret['cc']=$this->_tidy('div[class="content creativeCommons"]','inner',$html);
+					}
+					elseif(strpos($path,'speakers/') !== false){
+						$ret['media']=$this->_tidy('div[id="contextual"]','outer',$html);
+						$ret['body']='';
+						foreach($html->find('div[id="speakerscontent"]') as $element){
+							foreach($element->children as $e){
+								$ret['body'].=$e;
+							}
+						}
+					}
+					elseif(strpos($path,'playlists/') !== false){
+						$ret['title']=$this->_tidy('div[class="playlist-header"]','outer',$html); 
+						$ret['body']=$this->_tidy('ul[id="playlist"]','outer',$html); 
+					}
+					else{
+						$ret['body']=$this->_tidy('div[id="body"]','inner',$html); 
+					}
+					foreach($ret as $element){$parsed.=$element;} 					
+					
+					break;
+					
+					/*
+					case 'template.com': 
+					
+					$useParse = true;
+					$html = file_get_html($url);
+					foreach($html->find('img') as $element){if(strpos($element->src,'http://')===false)$element->src="http://$domain/".$element->src;}
+					foreach($html->find('a') as $element){if(strpos($element->href,'http://')===false)$element->href="http://$domain/".$element->href;}
+					
+					global $firstrunFP;
+					if(empty($firstrunFP)){ //Set custom styling
+						$document->addCustomTag( '<style type="text/css"></style>' );
+						$firstrunFP= true;
+					}
+					
+					$ret['title']=$this->_tidy('[class="title"]','inner',$html);
+					$ret['author']=$this->_tidy('[class="author"]','inner',$html);
+					$ret['meta']=$this->_tidy('div[class="metadata"]','inner',$html);
+					$ret['media']=$this->_tidy('div[id="meadiaheader"]','inner',$html);
+				
+					$ret['body']='';
+					foreach($html->find('div') as $element){
+						foreach($element->children as $e){
+							$ret['body'].=$e;
+						}
+					}
+
+					foreach($ret as $element){$parsed.=$element;} 
+					
+					break;
+					
+					*/
 				}
 
 				
