@@ -388,7 +388,7 @@ $h1 = '<h1>';$h1_ = '</h1>';$h2 = '<h2>';$h2_ = '</h2>';$h3 = '<h3>';$h3_ = '</h
 					
 					global $firstrunTED;
 					if(empty($firstrunTED)){ //Set custom styling
-						$document->addCustomTag( '<style type="text/css">p.user-blurb,p.show-info,p.more-download{visibility:hidden;}#contextual {width: 332px;background: #fff;float:right;}.talk-meta span {text-transform: uppercase;}.talk-meta {margin: 0 0 9px 7px;color: #999;}</style>' );
+						$document->addCustomTag( '<style type="text/css">#contextual {width: 332px;background: #fff;float:right;}.talk-meta span {text-transform: uppercase;}.talk-meta {margin: 0 0 9px 7px;color: #999;}</style>' );
 						$firstrunTED= true;
 					}
 										
@@ -411,9 +411,12 @@ $h1 = '<h1>';$h1_ = '</h1>';$h2 = '<h2>';$h2_ = '</h2>';$h3 = '<h3>';$h3_ = '</h
 					elseif(strpos($path,'playlists/') !== false){
 						$ret['title']=$this->_tidy('div[class="playlist-header"]','outer',$html); 
 						$ret['body']=$this->_tidy('ul[id="playlist"]','outer',$html); 
+						$document->addCustomTag( '<link rel="stylesheet" href="http://assets.tedcdn.com/css/playlist-playback.css" type="text/css" />');
+						$document->addCustomTag( '<style type="text/css">.playlist-header {margin-bottom:150px!important;float:none!important;}p.user-blurb,p.show-info,p.more-download{visibility:hidden;}</style>' );
 					}
 					else{
-						$ret['body']=$this->_tidy('div[id="body"]','inner',$html); 
+						$useParse = false;
+						//$ret['body']=$this->_tidy('div[id="body"]','inner',$html); 
 					}
 					foreach($ret as $element){$parsed.=$element;} 					
 					
