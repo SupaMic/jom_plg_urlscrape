@@ -422,6 +422,37 @@ $h1 = '<h1>';$h1_ = '</h1>';$h2 = '<h2>';$h2_ = '</h2>';$h3 = '<h3>';$h3_ = '</h
 					
 					break;
 					
+					case 'truth-out.org': 
+					
+					$useParse = true;
+					$html = file_get_html($url);
+					foreach($html->find('img') as $element){if(strpos($element->src,'http://')===false)$element->src="http://$domain/".$element->src;}
+					foreach($html->find('a') as $element){if(strpos($element->href,'://')===false)$element->href="http://$domain/".$element->href;}
+					
+					global $firstrunTO;
+					if(empty($firstrunTO)){ //Set custom styling
+						$document->addCustomTag( '<style type="text/css"></style>' );
+						$firstrunFP= true;
+					}
+					
+					$ret['title']=$this->_tidy('[class="itemTitle"]','outer',$html);
+					$ret['author']=$this->_tidy('span[class="itemAuthor"]','outer',$html);
+					$ret['meta']=$this->_tidy('span[class="itemDateCreated"]','inner',$html);
+									
+					$ret['body']='';
+					foreach($html->find('div[class="itemFullText"]') as $element){
+						foreach($element->children as $e){
+							$ret['body'].=$e;
+						}
+					}
+					
+					$ret['extra']=$this->_tidy('div[class="itemExtraFields"]','inner',$html);
+							
+
+					foreach($ret as $element){$parsed.=$element;} 
+					
+					break;
+					
 					/*
 					case 'template.com': 
 					
