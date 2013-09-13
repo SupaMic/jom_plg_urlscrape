@@ -106,6 +106,42 @@ class plgContentFastPost extends JPlugin {
 			 return false;
 			}
 		}
+		
+		public function _repath($type, $domain, &$html, $tslash = TRUE)
+		{
+			if($tslash){$ts="/";}else{$ts="";}
+			
+			if($type=="img"){
+				foreach($html->find('img') as $element){
+					if(strpos($element->src,'://')===false){
+						if(substr($element->src,0,2)!='//'){
+							$element->src="http://$domain".$ts.$element->src;
+						}
+					}
+				}
+			}
+			
+			if($type=="a"){
+				foreach($html->find('a') as $element){
+					if(strpos($element->href,'://')===false){
+						if(strpos($element->href,'http://')===false){
+						$element->href="http://$domain".$ts.$element->href;}
+						else{
+						$element->href="https://$domain".$ts.$element->href;}
+					}
+				}
+			}
+			
+		}	
+		
+		public function _style($id, $tag, &$document) //Set custom styling but only load css once
+		{
+			global $firstrun;
+			if($firstrun[$id]===NULL){ 
+				$firstrun[$id] = TRUE;
+				$document->addCustomTag( $tag );
+			}
+		}
 
         public function urlScrape( $url )
         {
@@ -129,12 +165,15 @@ $h1 = '<h1>';$h1_ = '</h1>';$h2 = '<h2>';$h2_ = '</h2>';$h3 = '<h3>';$h3_ = '</h
 					else{
 					$useParse = true;
 					$html = file_get_html($url);
-					if(empty($firstrunCBC)){ //set to add cbc.css only once if multiple CBC articles are loading on the same page
-						$document->addCustomTag( '<link rel="stylesheet" href="'.JURI::base().'plugins/content/fastpost/cbc.css" type="text/css" />' );
-						$firstrunCBC = true;
-					}
-					foreach($html->find('img') as $element){if(strpos($element->src,'http://')===false)$element->src="http://$domain/".$element->src;}
-					foreach($html->find('a') as $element){if(strpos($element->href,'http://')===false)$element->href="http://$domain/".$element->href;}
+					$this->_repath("img",$domain,$html, FALSE);
+					$this->_repath("a",$domain,$html, FALSE);
+					$tag = '<style type="text/css">';
+					$tag.= 'span.photo.left, span.photo.right {float: right; margin: 5px 0 7px 15px;}';
+					$tag.= 'span.photo {border-bottom: 1px solid #C4C4C4; color: #565656; font-size: 0.8em; line-height: 1.2em; overflow: hidden; padding: 0 0 10px; text-align: left;}';
+					$tag.= 'em.caption {float: right; font-style: normal;margin: 0; padding: 9px 0 10px; font-size: 11px; color: #565656; border-bottom: 1px solid #c4c4c4; width: 100%;}';
+					$tag.= '</style>';
+					$this->_style($domain, $tag, $document);
+
 					$ret['title'] = $this->_tidy('div[class="headline"] h1','inner', $html);
 					$ret['subtitle'] = $this->_tidy('[id="storyhead"]h3.deck','inner', $html);
 					$ret['posted'] = $this->_tidy('[id="storyhead"]h4.posted','inner', $html);
@@ -180,9 +219,9 @@ $h1 = '<h1>';$h1_ = '</h1>';$h2 = '<h2>';$h2_ = '</h2>';$h3 = '<h3>';$h3_ = '</h
 					case 'janinebandcroft.wordpress.com': 
 					$useParse = true;
 					$html = file_get_html($url);
-					foreach($html->find('img') as $element){if(strpos($element->src,'http://')===false)$element->src="http://$domain/".$element->src;}
-					foreach($html->find('a') as $element){if(strpos($element->href,'http://')===false)$element->href="http://$domain/".$element->href;}
-
+					$this->_repath("img",$domain,$html, TRUE);
+					$this->_repath("a",$domain,$html, TRUE);
+					
 					$ret['title'] = $this->_tidy('h2[class="entry-title"]', 'inner', $html);
 					$ret['meta'] = $this->_tidy('div[class="entry-meta"]', 'inner', $html);
 					foreach($html->find('audio[id] span') as $element){
@@ -254,8 +293,9 @@ $h1 = '<h1>';$h1_ = '</h1>';$h2 = '<h2>';$h2_ = '</h2>';$h3 = '<h3>';$h3_ = '</h
 					case 'thetyee.ca': 
 					$useParse = true;
 					$html = file_get_html($url);
-					foreach($html->find('img') as $element){if(strpos($element->src,'http://')===false)$element->src="http://$domain/".$element->src;}
-					foreach($html->find('a') as $element){if(strpos($element->href,'http://')===false)$element->href="http://$domain/".$element->href;}
+					$this->_repath("img",$domain,$html, TRUE);
+					$this->_repath("a", $domain, $html, FALSE);
+
 
 					$ret['title'] = $this->_tidy('h2[class="title"]', 'inner', $html);
 					$ret['subtitle'] = $this->_tidy('p[class="tagline"]', 'inner', $html);
@@ -293,8 +333,8 @@ $h1 = '<h1>';$h1_ = '</h1>';$h2 = '<h2>';$h2_ = '</h2>';$h3 = '<h3>';$h3_ = '</h
 					case 'focusonline.ca': 
 					$useParse = true;
 					$html = file_get_html($url);
-					foreach($html->find('img') as $element){if(strpos($element->src,'http://')===false)$element->src="http://$domain/".$element->src;}
-					foreach($html->find('a') as $element){if(strpos($element->href,'http://')===false)$element->href="http://$domain/".$element->href;}
+					$this->_repath("img", $domain, $html, TRUE);
+					$this->_repath("a", $domain, $html, TRUE);
 
 					$ret['title']= $this->_tidy('div[id="content"] h1[class="node-title"]','inner',$html);
 					$ret['author']= $this->_tidy('div[id="content"] div[class="content"] h3','inner',$html);
@@ -336,14 +376,11 @@ $h1 = '<h1>';$h1_ = '</h1>';$h2 = '<h2>';$h2_ = '</h2>';$h3 = '<h3>';$h3_ = '</h
 					
 					$useParse = true;
 					$html = file_get_html($url);
-					foreach($html->find('img') as $element){if(strpos($element->src,'http://')===false)$element->src="http://$domain/".$element->src;}
-					foreach($html->find('a') as $element){if(strpos($element->href,'http://')===false)$element->href="http://$domain/".$element->href;}
+					$this->_repath("img", $domain, $html, FALSE);
+					$this->_repath("a", $domain, $html, TRUE);
 					
-					global $firstrunALJAZ;
-					if(empty($firstrunALJAZ)){ //Set custom styling
-						$document->addCustomTag( '<style type="text/css">.articleMediaCaption{background: rgba(0, 0, 0, 0.6);position: relative;bottom: 45px;left: 0;right: 0;text-align: left;padding: 4px 8px;color: white;font-size: 10px;font-family: Verdana;font-weight: bold;width:100%;}</style>' );
-						$firstrunALJAZ = true;
-					}
+					$tag = '<style type="text/css">.articleMediaCaption{background: rgba(0, 0, 0, 0.6);position: relative;bottom: 45px;left: 0;right: 0;text-align: left;padding: 4px 8px;color: white;font-size: 10px;font-family: Verdana;font-weight: bold;width:100%;}</style>';
+					$this->_style($domain, $tag, $document);
 					
 					$ret['title']= $this->_tidy('[id="DetailedTitle"]','outer',$html);
 					$ret['subtitle']= $this->_tidy('[class="articleSumm"]','outer',$html);
@@ -379,18 +416,10 @@ $h1 = '<h1>';$h1_ = '</h1>';$h2 = '<h2>';$h2_ = '</h2>';$h3 = '<h3>';$h3_ = '</h
 					
 					$useParse = true;
 					$html = file_get_html($url);
-					foreach($html->find('img') as $element){
-						if(strpos($element->src,'//')===false){
-							if(strpos($element->src,'http://')===false){$element->src="http://$domain/".$element->src;}
-						}
-					}
-					foreach($html->find('a') as $element){if(strpos($element->href,'http://')===false)$element->href="http://$domain".$element->href;}
-					
-					global $firstrunTED;
-					if(empty($firstrunTED)){ //Set custom styling
-						$document->addCustomTag( '<style type="text/css">#contextual {width: 332px;background: #fff;float:right;}.talk-meta span {text-transform: uppercase;}.talk-meta {margin: 0 0 9px 7px;color: #999;}</style>' );
-						$firstrunTED= true;
-					}
+					$this->_repath("img", $domain, $html, TRUE);
+					$this->_repath("a", $domain, $html, FALSE);
+					$tag = '<style type="text/css">#contextual {width: 332px;background: #fff;float:right;}.talk-meta span {text-transform: uppercase;}.talk-meta {margin: 0 0 9px 7px;color: #999;}</style>';
+					$this->_style($domain, $tag, $document);
 										
 					if(strpos($path,'talks/') !== false){
 						$ret['title']=$h1.$this->_tidy('span[id="altHeadline"]','inner',$html).$h1_;
@@ -410,9 +439,10 @@ $h1 = '<h1>';$h1_ = '</h1>';$h2 = '<h2>';$h2_ = '</h2>';$h3 = '<h3>';$h3_ = '</h
 					}
 					elseif(strpos($path,'playlists/') !== false){
 						$ret['title']=$this->_tidy('div[class="playlist-header"]','outer',$html); 
-						$ret['body']=$this->_tidy('ul[id="playlist"]','outer',$html); 
-						$document->addCustomTag( '<link rel="stylesheet" href="http://assets.tedcdn.com/css/playlist-playback.css" type="text/css" />');
-						$document->addCustomTag( '<style type="text/css">.playlist-header {margin-bottom:150px!important;float:none!important;}p.user-blurb,p.show-info,p.more-download{visibility:hidden;}</style>' );
+						$ret['body']=$this->_tidy('ul[id="playlist"]','outer',$html);
+						$tag = '<link rel="stylesheet" href="http://assets.tedcdn.com/css/playlist-playback.css" type="text/css" />';
+						$tag.= '<style type="text/css">.playlist-header {margin-bottom:150px!important;float:none!important;}p.user-blurb,p.show-info,p.more-download{visibility:hidden;}</style>';
+						$this->_style('ted.com-playlist', $tag, $document);
 					}
 					else{
 						$useParse = false;
@@ -426,14 +456,10 @@ $h1 = '<h1>';$h1_ = '</h1>';$h2 = '<h2>';$h2_ = '</h2>';$h3 = '<h3>';$h3_ = '</h
 					
 					$useParse = true;
 					$html = file_get_html($url);
-					foreach($html->find('img') as $element){if(strpos($element->src,'http://')===false)$element->src="http://$domain/".$element->src;}
-					foreach($html->find('a') as $element){if(strpos($element->href,'://')===false)$element->href="http://$domain/".$element->href;}
-					
-					global $firstrunTO;
-					if(empty($firstrunTO)){ //Set custom styling
-						$document->addCustomTag( '<style type="text/css"></style>' );
-						$firstrunFP= true;
-					}
+					$this->_repath("img", $domain, $html, TRUE);
+					$this->_repath("a", $domain, $html, TRUE);
+					$tag="";
+					$this->_style($domain, $tag, $document);
 					
 					$ret['title']=$this->_tidy('[class="itemTitle"]','outer',$html);
 					$ret['author']=$this->_tidy('span[class="itemAuthor"]','outer',$html);
@@ -458,19 +484,15 @@ $h1 = '<h1>';$h1_ = '</h1>';$h2 = '<h2>';$h2_ = '</h2>';$h3 = '<h3>';$h3_ = '</h
 					
 					$useParse = true;
 					$html = file_get_html($url);
-					foreach($html->find('img') as $element){if(strpos($element->src,'http://')===false)$element->src="http://$domain/".$element->src;}
-					foreach($html->find('a') as $element){if(strpos($element->href,'http://')===false)$element->href="http://$domain/".$element->href;}
-					
-					global $firstrunFP;
-					if(empty($firstrunFP)){ //Set custom styling
-						$document->addCustomTag( '<style type="text/css"></style>' );
-						$firstrunFP= true;
-					}
+					$this->_repath("img", $domain, $html, TRUE);
+					$this->_repath("a", $domain, $html, TRUE);
+					$tag="";
+					$this->_style($domain, $tag, $document);
 					
 					$ret['title']=$this->_tidy('[class="title"]','inner',$html);
 					$ret['author']=$this->_tidy('[class="author"]','inner',$html);
 					$ret['meta']=$this->_tidy('div[class="metadata"]','inner',$html);
-					$ret['media']=$this->_tidy('div[id="meadiaheader"]','inner',$html);
+					$ret['media']=$this->_tidy('div[id="mediaheader"]','inner',$html);
 				
 					$ret['body']='';
 					foreach($html->find('div') as $element){
@@ -485,8 +507,6 @@ $h1 = '<h1>';$h1_ = '</h1>';$h2 = '<h2>';$h2_ = '</h2>';$h3 = '<h3>';$h3_ = '</h
 					
 					*/
 				}
-
-				
 
 				if($useParse){
 					return $parsed.'<p><a href="'.$url.'" target="_blank">'.$url.' <h6>FastPost Article</h6></a></p>';
