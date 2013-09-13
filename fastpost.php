@@ -1,7 +1,7 @@
 <?php
 /**
  * plugin fastpost
- * @version 0.6 - July 2013
+ * @version 0.7 - Sept 2013
  * @package fastpost
  * @copyright Copyright (c) SupaDupa Productions http://SupaDesign.ca
  * @license http://www.gnu.org/copyleft/gpl.html GNU/GPL
